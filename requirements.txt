@@ -1,0 +1,104 @@
+state machine
+    handles events
+    current state is the combination of active leafs and their parents
+
+events
+    start from external source
+    internal may be generated
+        generated internal events are processed in FIFO order after the current event is processed, but before event processing completes
+    can result in state transition
+    an event can have associated parameters
+    cannot start new event processing until any current event processing completes
+    Event deferral
+        if an event in the current state’s deferred event list occurs, the event will be saved (deferred) for future processing until a state is entered that does not list the event in its deferred event list
+        upon entry to such a state, the UML state machine will automatically recall any saved event(s) that are no longer deferred and will then either consume or discard these events. 
+        In the case of orthogonal regions where one orthogonal region defers an event and another consumes the event, the consumer takes precedence and the event is consumed and not deferred.
+
+transitions
+    initial transition specifies the default state when the system first begins, the initial transition can have associated actions
+    Internal transitions (target = none or (target = self and exit = none)
+        event triggers actions but no state change
+    Self transitions (target = exit = self)
+        event triggers exit and reentry of state
+    default transition (target, no exit)
+        exits only if necessary to navigate
+    external transitions (target and exit)
+        exit out to, and including, a specified state
+    Transition actions are performed after exits but before entries
+    
+regions
+    a state may contain regions instead of nothing, or other states
+    being in such a composite state entails being in all its regions simultaneously
+    regions can coordinate their behaviors by sending event instances to each other.
+    does not rely on any particular order for event instances to be dispatched to the relevant orthogonal regions.
+
+Entry and exit actions
+    optional entry actions, which are executed upon entry to a state
+    optional exit actions, which are executed upon exit from a state. 
+    the order of execution of entry actions must always proceed from the outermost state to the innermost state (top-down).
+    The execution of exit actions, which corresponds to destructor invocation, proceeds in the exact reverse order (bottom-up).
+
+boolean QhsmStateIsActive(*Qhsm);
+    - if state is an active leaf or parent of an active leaf returns true
+    - else returns false
+
+QhsmEventHandler(EventResult(Event))
+    - IMPLICIT: takes events and returns results and transitions (transition through a parameter)
+    - on first event, root/top state becomes active leaf
+    - on becoming active, state gets hit with entry event
+    - after entry, active leaf is hit with init
+    - on init, transit will be taken
+    - 
+    - on event becoming active leaf, event handler gets hit with entry and then init
+    - for entry and exit, result is discarded and treated as ignored.
+        - entry transit ignored even if handler returns consumed
+        - exit transit ignored even if handler returns consumed
+    - consistency checks
+        - entry_count - exit_count = {0,1}, if 1 state must be active
+        - if state is active all parents are active
+        - if state is active all regions are active
+        - states' parents entry/exit counts <= child's counts
+    - for init events, result is discarded and treated as consumed.
+        - init transit is taken even if handler returns ignored
+    - for all other events:
+        - if result is ignored, it will be passed to parent (if exists, and doesn't contain unprocessed orthogonal regions) or leaf-most unprocessed active state in another region (if exists)
+        - if all states ignore event, QhsmDo returns ignored
+        - if result is consumed, transition will be taken (if given) and 
+        - if result is deferred:
+            - event will be passed to remaining orthogonal regions
+            - if event is not consumed it will be saved
+            - saved events are rethrown in FIFO order after next transition
+
+QhsmEventResult
+    - OHSM_EVENT_RESULT_IGNORED
+        - will pass event to parent if parent exists
+    - OHSM_EVENT_RESULT_CONSUMED
+        - will stop passing event
+    - OHSM_EVENT_RESULT_DEFERRED
+        - will defer event if it is not consumed in an orthogonal region
+
+QHsmTransition
+    - can have a destination QHsm
+    - can have an exit QHsm
+        - if given and in active tree transition will exit down the tree until it has exitted the exit QHsm before transitioning to target
+    - history
+    - fork
+    - join
+    - merge
+    - choice
+    - final
+    - terminate
+
+QhsmEvent
+ - has an EventId (ENTRY/INIT/EXIT/application)
+
+QhsmEventId
+    - QHSM_EVENT_ID_ENTRY
+        - passed when a state first becomes active
+    - QHSM_EVENT_ID_INIT
+        - passed after entry if the state is an active leaf
+    - QHSM_EVENT_ID_EXIT
+        - passed when a state ceases to be active
+    - QHSM_EVENT_ID_FIRST_UNUSED
+        - defines the first usable event id for an application
+
