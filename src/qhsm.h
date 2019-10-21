@@ -41,4 +41,6 @@ struct Qhsm {
     QhsmEventHandler handler;
 };
 
+void QhsmDo(Qhsm *machine, QhsmEvent *event, QhsmTransit *transit);
+
 #endif // _QHSM_H

@@ -52,6 +52,8 @@ flags = [
 'vendor/ceedling/vendor/unity/src',
 '-iquote',
 'src',
+'-iquote',
+'build/test/mocks'
 ]
 
 
